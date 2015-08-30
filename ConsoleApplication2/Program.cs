@@ -25,6 +25,20 @@ namespace ConsoleApplication2
             {"school","./image/data/Kinderus/GoodsForStudents"},
         
         };
+        private static readonly Dictionary<string, string> kinderusRU = new Dictionary<string, string>()
+        {
+            {"toys","Игрушки"},
+            {"mebel","Мебель"},
+            {"kolyaski","Коляски"},
+            {"green","Одежда для малышей"},
+            {"purple","Одежда для девочек"},
+            {"blue","Одежда для мальчиков"},
+            {"mom","Одежда для мам"},
+            {"newborn","Одежда для новорожденных"},
+            {"gigiena","Гигиена"},
+            {"sport","Спорт и отдых"},
+            {"school","Товары для школьников"},
+        };
 
         
         [STAThread]
@@ -95,11 +109,31 @@ namespace ConsoleApplication2
                     //
                 }
             }
+            var sql_manufacturer = 
+                "SET @row_number = 0;" +
+                "select @row_number:=max(manufacturer_id) from oc_manufacturer;" +
+                "INSERT INTO oc_manufacturer (manufacturer_id, name, image, sort_order)" +
+                "select (@row_number:=@row_number+1) as num, name, '' as image, 0 as sort_order from (" +
+                "select null as name";
             foreach(var rez in list.GroupBy(value => value.Brand).OrderBy(value=>value.Key))
             {
-                 Console.WriteLine(rez.Key);
-               
+                sql_manufacturer += string.Format(" union all select '{0}'as name",rez.Key.Replace("'","`"));
             }
+            sql_manufacturer += ")bb " +
+                                "where not exists(select * from oc_manufacturer where name =bb.name) and name is not null;";
+            Console.WriteLine(sql_manufacturer);
+
+            var sql_categories =
+                "SET @row_number = 0;" +
+                "select @row_number:=max(category_id) from oc_category;" +
+                "INSERT INTO oc_category (category_id, name, image, sort_order)" +
+                "select (@row_number:=@row_number+1) as num, name, '' as image, 0 as sort_order from (" +
+                "select null as name";
+            foreach (var cat in kinderusCatalogs)
+            {
+                sql_categories += string.Format(" union all select '{0}' as name",cat.Key);
+            }
+
             foreach (var product in list)
             {
                 Console.Write(product);

@@ -37,5 +37,9 @@ namespace ConsoleApplication2
             ValutaName = valutaName;
         }
 
-     }
+        public override string ToString()
+        {
+            return base.ToString();
+        }
+    }
 }
