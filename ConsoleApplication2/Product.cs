@@ -20,8 +20,9 @@ namespace ConsoleApplication2
         public decimal Price { get; private set; }
         public decimal OldPrice { get; private set; }
         public string ValutaName { get; private set; }
+        public int CatalogId { get; private set; }
 
-        public Product(int id, string catalog, string name, string articul, string stuff, string size, string alt, string pic, string brand, decimal price, decimal oldPrice, string valutaName)
+        public Product(int id, string catalog, string name, string articul, string stuff, string size, string alt, string pic, string brand, decimal price, decimal oldPrice, string valutaName, int catalog_id)
         {
             Id = id;
             Catalog = catalog;
@@ -35,6 +36,7 @@ namespace ConsoleApplication2
             Price = price;
             OldPrice = oldPrice;
             ValutaName = valutaName;
+            CatalogId = catalog_id;
         }
 
         public override string ToString()
