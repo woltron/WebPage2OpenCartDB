@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -44,12 +45,15 @@ namespace ConsoleApplication2
         [STAThread]
         static void Main(string[] args)
         {
+            NumberFormatInfo nfi = new NumberFormatInfo();
+            nfi.NumberDecimalSeparator = ".";
             var list = new List<Product>();
             var doc = new HtmlDocument();
             var storeId = 0;//номер магазина
             //doc.Load(@"C:\exp\ibabbies\Детские игрушки\Детские игрушки_ интернет-магазин Kinderus.html",Encoding.UTF8);
             //doc.Load(@"C:\exp\ibabbies\Детская мебель и интерьер\Детская мебель и интерьер_ интернет-магазин Kinderus.html", Encoding.UTF8);
             var fileStream = new StreamWriter("C:/exp/1.sql", false);
+            var fileStream2 = new StreamWriter("C:/exp/2.sql", false);
             fileStream.WriteLine();
             fileStream.WriteLine("SET @row_number = 0;");
             fileStream.WriteLine("SET @cnt = 0;");
@@ -203,12 +207,14 @@ namespace ConsoleApplication2
                         "", "", "", "1", "7", pr.Pic, "@manufacturer_id", "1", pr.Price, "", "", "2015-09-01", "",
                         "1", "", "", "", "1", "", "", "", "1", "2015-09-01", "2015-09-01", ""));
 
+                fileStream2.WriteLine(string.Format("update oc_product set price={0} where product_id={1};", (Math.Round((double)pr.Price * 1.3, 0)).ToString(nfi), pr.Id), CultureInfo.InvariantCulture);
                 //Console.Write(product);
             }
 
              #endregion
-            
+
             fileStream.Flush();
+            fileStream2.Flush();
            
         }
 
