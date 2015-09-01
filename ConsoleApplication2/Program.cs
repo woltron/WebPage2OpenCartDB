@@ -12,17 +12,17 @@ namespace ConsoleApplication2
     {
         private static readonly Dictionary<string, string> kinderusCatalogs = new Dictionary<string, string>()
         {
-            {"toys","./image/data/Kinderus/KidsToys"},
-            {"mebel","./image/data/Kinderus/ChildrensFurnitureAndInterior"},
-            {"kolyaski","./image/data/Kinderus/StrollersAndCarSeats"},
-            {"green","./image/data/Kinderus/ClothesForBabies"},
-            {"purple","./image/data/Kinderus/ClothingForGirls"},
-            {"blue","./image/data/Kinderus/ClothesForBoys"},
-            {"mom","./image/data/Kinderus/ClothesForMoms"},
-            {"newborn","./image/data/Kinderus/ChildrensClothingForKids"},
-            {"gigiena","./image/data/Kinderus/DiapersAndHygiene"},
-            {"sport","./image/data/Kinderus/SportsAndRecreation"},
-            {"school","./image/data/Kinderus/GoodsForStudents"},
+            {"toys","data/Kinderus/KidsToys"},
+            {"mebel","data/Kinderus/ChildrensFurnitureAndInterior"},
+            {"kolyaski","data/Kinderus/StrollersAndCarSeats"},
+            {"green","data/Kinderus/ClothesForBabies"},
+            {"purple","data/Kinderus/ClothingForGirls"},
+            {"blue","data/Kinderus/ClothesForBoys"},
+            {"mom","data/Kinderus/ClothesForMoms"},
+            {"newborn","data/Kinderus/ChildrensClothingForKids"},
+            {"gigiena","data/Kinderus/DiapersAndHygiene"},
+            {"sport","data/Kinderus/SportsAndRecreation"},
+            {"school","data/Kinderus/GoodsForStudents"},
         
         };
         private static readonly Dictionary<string, string[]> kinderus = new Dictionary<string, string[]>()
@@ -46,8 +46,10 @@ namespace ConsoleApplication2
         {
             var list = new List<Product>();
             var doc = new HtmlDocument();
-            doc.Load(@"C:\exp\ibabbies\Детские игрушки\Детские игрушки_ интернет-магазин Kinderus.html",Encoding.UTF8);
-            //            doc.Load(@"C:\exp\ibabbies\Детская мебель и интерьер\Детская мебель и интерьер_ интернет-магазин Kinderus.html", Encoding.UTF8);
+            //doc.Load(@"C:\exp\ibabbies\Детские игрушки\Детские игрушки_ интернет-магазин Kinderus.html",Encoding.UTF8);
+            doc.Load(@"C:\exp\ibabbies\Детская мебель и интерьер\Детская мебель и интерьер_ интернет-магазин Kinderus.html", Encoding.UTF8);
+            var fileStream = new StreamWriter("C:/exp/1.sql", false);
+
             #region загрузка продуктов
             var catalogs = doc.DocumentNode.SelectNodes("//div[@id='catalog']");
             var catalog = catalogs[0].Attributes[1].Value;
@@ -111,71 +113,58 @@ namespace ConsoleApplication2
             }
             #endregion
             #region SQL-загрузка недостающих производителей
-            var sql_manufacturer = 
-                "SET @row_number = 0;" +
-                "select @row_number:=max(manufacturer_id) from oc_manufacturer;" +
-                "INSERT INTO oc_manufacturer (manufacturer_id, name, image, sort_order)" +
-                "select (@row_number:=@row_number+1) as num, name, '' as image, 0 as sort_order from (" +
-                "select null as name";
-            foreach(var rez in list.GroupBy(value => value.Brand).OrderBy(value=>value.Key))
+            fileStream.WriteLine();
+            fileStream.WriteLine("SET @row_number = 0;");
+            fileStream.WriteLine("SET @cnt = 0;");
+
+            fileStream.WriteLine("--SQL-загрузка недостающих производителей");
+            //fileStream.WriteLine("delete from oc_manufacturer;");
+            foreach (var rez in list.GroupBy(value => value.Brand).OrderBy(value => value.Key))
             {
-                sql_manufacturer += string.Format(" union all select '{0}'as name",rez.Key.Replace("'","`"));
+
+                fileStream.WriteLine(string.Format("INSERT INTO oc_manufacturer (`manufacturer_id`, `name`, `image`, `sort_order`) SELECT (select max(manufacturer_id)+1 from oc_manufacturer), '{0}', '', 0 FROM DUAL WHERE (select count(*) from oc_manufacturer where name ='{0}')=0;", rez.Key.Replace("'", "`")));
             }
-            sql_manufacturer += ")bb " +
-                                "where not exists(select * from oc_manufacturer where name =bb.name) and name is not null;";
-            Console.WriteLine(sql_manufacturer);
             #endregion
             #region SQL-загрузка недостающих категорий
-            var sql_categories =
-                "SET @row_number = 0;" +
 
-                "select @row_number:=max(category_id) from oc_category_description;" +
-
-                "INSERT INTO oc_category_description (category_id, name, image, sort_order)" +
-                "select (@row_number:=@row_number+1) as num, name, '' as image, 0 as sort_order from (" +
-                "select null as name";
-            foreach (var cat in kinderusCatalogs)
+            fileStream.WriteLine();
+            fileStream.WriteLine("--SQL-загрузка недостающих категорий");
+            //fileStream.WriteLine("delete from oc_category_description;");
+            //fileStream.WriteLine("delete from oc_category_path;");
+            //fileStream.WriteLine("delete from oc_category_to_store;");
+            //fileStream.WriteLine("delete from oc_category;");
+            int ii = 0;
+            foreach (var cat in kinderus)
             {
-                sql_categories += string.Format(" union all select '{0}' as name",cat.Key);
+                ii++;
+                //fileStream.WriteLine(string.Format("INSERT INTO oc_category (`category_id`, `image`, `parent_id`, `top`, `column`, `sort_order`, `status`, `date_added`, `date_modified`) SELECT {0}, '', 0, 1, 1,{0}, 1,'2015-09-01','2015-09-01'  FROM DUAL;", ii));
+                //fileStream.WriteLine(string.Format("INSERT INTO oc_category_to_store (`category_id`, `store_id`) SELECT {0}, 0 FROM DUAL;", ii));
+                //fileStream.WriteLine(string.Format("INSERT INTO oc_category_path (`category_id`, `path_id`, `level`) SELECT {0}, {0}, 1 FROM DUAL;", ii));
+                //fileStream.WriteLine(string.Format("INSERT INTO oc_category_description (`category_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`) SELECT {0}, 1, '{1}', '', '','','',''  FROM DUAL;", ii, cat.Value[0].Replace("'", "`")));
+                //fileStream.WriteLine(string.Format("INSERT INTO oc_category_description (`category_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`) SELECT {0}, 2, '{1}', '', '','','',''  FROM DUAL;", ii, cat.Value[1].Replace("'", "`")));
             }
-            sql_categories += ")cd " +
-                              "left join oc_cagegory_description ocd on ocd." +
-                              "where cd.name is not null";
             #endregion
             #region product
-            var sql_prods = "SET @manufacturer_id=0;";
+            fileStream.WriteLine();
+            fileStream.WriteLine("--SQL-загрузка недостающих продуктов");
+            fileStream.WriteLine("SET @manufacturer_id=0;");
+            //fileStream.WriteLine("delete from oc_product_description;");
+            //fileStream.WriteLine("delete from oc_product;");
+            //fileStream.WriteLine("delete from oc_product_to_category;");
+            //fileStream.WriteLine("delete from oc_product_to_store;");
             foreach (var pr in list)
             {
-                sql_prods += "INSERT INTO `oc_product_description` (`product_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`, `tag`) " +
-                string.Format("VALUES( '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' );",
-                   pr.Id, 1, pr.Name.Replace("'", "`"), "", "", "", "", "", "", "", "");
-
-                sql_prods += "INSERT INTO `oc_product_description` (`product_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`, `tag`) " +
-                string.Format("VALUES( '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' );",
-                   pr.Id, 2, pr.Name.Replace("'", "`"), "", "", "", "", "", "", "", "");
-
-                sql_prods += string.Format("select @manufacturer_id:=manufacturer_id from oc_manufacturer where name = '{0}';", pr.Brand);
-                sql_prods += "INSERT INTO `oc_product` (`product_id`, `model`, " +
-                                "`sku`, `upc`, `ean`, `jan`, `isbn`, `mpn`, `location`, " +
-                                "`quantity`, `stock_status_id`, " +
-                                "`image`, `manufacturer_id`, `shipping`, `price`, `points`, `tax_class_id`, " +
-                                "`date_available`, `weight`, `weight_class_id`, `length`, `width`, `height`, `length_class_id`, " +
-                                "`subtract`, `minimum`, `sort_order`, `status`, `date_added`, `date_modified`, `viewed`)" +
-                string.Format("VALUES( '{0}', '{1}', " +
-                              "'{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' , " +
-                              "{9}, {10}, " +
-                              "'{11}', {12}, {13}, {14}, '{15}', '{16}', " +
-                              "'{17}', '{18}', {19}, '{20}', '{21}', '{22}', {23}, " +
-                              "'{24}', '{25}', '{26}', {27}, '{28}', '{29}', '{30}');",
-                   pr.Id, kinderus[pr.Catalog][0].Replace("'", "`"), pr.Catalog.Replace("'", "`"), 
-                   "", "", "", "", "", "", "1", "7",
-                   pr.Pic, "@manufacturer_id", "1", pr.Price, "", "", 
-                   "2015-09-01", "", "1", "", "", "", "1",
-                   "", "", "", "1", "2015-09-01", "2015-09-01", "");
+                fileStream.WriteLine(string.Format("select @manufacturer_id:=manufacturer_id from oc_manufacturer where name = '{0}';", pr.Brand.Replace("'", "`")));
+                fileStream.WriteLine(string.Format("INSERT INTO oc_product_to_category (`product_id`,`category_id`, `main_category`) SELECT {0}, 2, 2  FROM DUAL where not exists(select * from oc_product_to_category where product_id={0});", pr.Id));
+                fileStream.WriteLine(string.Format("INSERT INTO oc_product_to_store (`product_id`,`store_id`) SELECT {0}, 0  FROM DUAL where not exists(select * from oc_product_to_store where product_id={0});", pr.Id));
+                fileStream.WriteLine("INSERT INTO `oc_product_description` (`product_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`, `tag`) " + string.Format("select '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' from dual where not exists(select * from oc_product_description where product_id={0} and language_id={1});", pr.Id, 1, pr.Name.Replace("'", "`"), "", "", "", "", "", ""));
+                fileStream.WriteLine("INSERT INTO `oc_product_description` (`product_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`, `tag`) " + string.Format("select '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' from dual where not exists(select * from oc_product_description where product_id={0} and language_id={1});", pr.Id, 2, pr.Name.Replace("'", "`"), "", "", "", "", "", ""));
+                fileStream.WriteLine("INSERT INTO `oc_product` (`product_id`, `model`, `sku`, `upc`, `ean`, `jan`, `isbn`, `mpn`, `location`, `quantity`, `stock_status_id`, `image`, `manufacturer_id`, `shipping`, `price`, `points`, `tax_class_id`, `date_available`, `weight`, `weight_class_id`, `length`, `width`, `height`, `length_class_id`, `subtract`, `minimum`, `sort_order`, `status`, `date_added`, `date_modified`, `viewed`)" + string.Format("select  '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' , {9}, {10}, '{11}', {12}, {13}, {14}, '{15}', '{16}', '{17}', '{18}', {19}, '{20}', '{21}', '{22}', {23}, '{24}', '{25}', '{26}', {27}, '{28}', '{29}', '{30}' from dual where not exists(select * from oc_product where product_id={0});", pr.Id, kinderus[pr.Catalog][0].Replace("'", "`"), pr.Catalog.Replace("'", "`"), "", "", "", "", "", "", "1", "7", pr.Pic, "@manufacturer_id", "1", pr.Price, "", "", "2015-09-01", "", "1", "", "", "", "1", "", "", "", "1", "2015-09-01", "2015-09-01", ""));
 
                 //Console.Write(product);
             }
             #endregion
+            fileStream.Flush();
            
         }
 
