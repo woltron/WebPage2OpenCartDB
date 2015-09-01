@@ -25,19 +25,19 @@ namespace ConsoleApplication2
             {"school","./image/data/Kinderus/GoodsForStudents"},
         
         };
-        private static readonly Dictionary<string, string> kinderusRU = new Dictionary<string, string>()
+        private static readonly Dictionary<string, string[]> kinderus = new Dictionary<string, string[]>()
         {
-            {"toys","Игрушки"},
-            {"mebel","Мебель"},
-            {"kolyaski","Коляски"},
-            {"green","Одежда для малышей"},
-            {"purple","Одежда для девочек"},
-            {"blue","Одежда для мальчиков"},
-            {"mom","Одежда для мам"},
-            {"newborn","Одежда для новорожденных"},
-            {"gigiena","Гигиена"},
-            {"sport","Спорт и отдых"},
-            {"school","Товары для школьников"},
+            {"toys",new[]{"Игрушки","Toys"}},
+            {"mebel",new[]{"Мебель","Furniture"}},
+            {"kolyaski",new[]{"Коляски","Stroller"}},
+            {"green",new[]{"Малыши","Babies"}},
+            {"purple",new[]{"Девочки","Girls"}},
+            {"blue",new[]{"Мальчики","Boys"}},
+            {"mom",new[]{"Мамы","Mom"}},
+            {"newborn",new[]{"Новорожденные","Newborn"}},
+            {"gigiena",new[]{"Гигиена","Hygiene"}},
+            {"sport",new[]{"Спорт","Sport"}},
+            {"school",new[]{"Школьники","Student"}},
         };
 
         
@@ -47,8 +47,8 @@ namespace ConsoleApplication2
             var list = new List<Product>();
             var doc = new HtmlDocument();
             doc.Load(@"C:\exp\ibabbies\Детские игрушки\Детские игрушки_ интернет-магазин Kinderus.html",Encoding.UTF8);
-//            doc.Load(@"C:\exp\ibabbies\Детская мебель и интерьер\Детская мебель и интерьер_ интернет-магазин Kinderus.html", Encoding.UTF8);
-
+            //            doc.Load(@"C:\exp\ibabbies\Детская мебель и интерьер\Детская мебель и интерьер_ интернет-магазин Kinderus.html", Encoding.UTF8);
+            #region загрузка продуктов
             var catalogs = doc.DocumentNode.SelectNodes("//div[@id='catalog']");
             var catalog = catalogs[0].Attributes[1].Value;
             var nodes = doc.DocumentNode.SelectNodes("//div[@class='prod']");
@@ -109,6 +109,8 @@ namespace ConsoleApplication2
                     //
                 }
             }
+            #endregion
+            #region SQL-загрузка недостающих производителей
             var sql_manufacturer = 
                 "SET @row_number = 0;" +
                 "select @row_number:=max(manufacturer_id) from oc_manufacturer;" +
@@ -122,22 +124,59 @@ namespace ConsoleApplication2
             sql_manufacturer += ")bb " +
                                 "where not exists(select * from oc_manufacturer where name =bb.name) and name is not null;";
             Console.WriteLine(sql_manufacturer);
-
+            #endregion
+            #region SQL-загрузка недостающих категорий
             var sql_categories =
                 "SET @row_number = 0;" +
-                "select @row_number:=max(category_id) from oc_category;" +
-                "INSERT INTO oc_category (category_id, name, image, sort_order)" +
+
+                "select @row_number:=max(category_id) from oc_category_description;" +
+
+                "INSERT INTO oc_category_description (category_id, name, image, sort_order)" +
                 "select (@row_number:=@row_number+1) as num, name, '' as image, 0 as sort_order from (" +
                 "select null as name";
             foreach (var cat in kinderusCatalogs)
             {
                 sql_categories += string.Format(" union all select '{0}' as name",cat.Key);
             }
-
-            foreach (var product in list)
+            sql_categories += ")cd " +
+                              "left join oc_cagegory_description ocd on ocd." +
+                              "where cd.name is not null";
+            #endregion
+            #region product
+            var sql_prods = "SET @manufacturer_id=0;";
+            foreach (var pr in list)
             {
-                Console.Write(product);
+                sql_prods += "INSERT INTO `oc_product_description` (`product_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`, `tag`) " +
+                string.Format("VALUES( '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' );",
+                   pr.Id, 1, pr.Name.Replace("'", "`"), "", "", "", "", "", "", "", "");
+
+                sql_prods += "INSERT INTO `oc_product_description` (`product_id`, `language_id`, `name`, `description`, `meta_description`, `meta_keyword`, `seo_title`, `seo_h1`, `tag`) " +
+                string.Format("VALUES( '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' );",
+                   pr.Id, 2, pr.Name.Replace("'", "`"), "", "", "", "", "", "", "", "");
+
+                sql_prods += string.Format("select @manufacturer_id:=manufacturer_id from oc_manufacturer where name = '{0}';", pr.Brand);
+                sql_prods += "INSERT INTO `oc_product` (`product_id`, `model`, " +
+                                "`sku`, `upc`, `ean`, `jan`, `isbn`, `mpn`, `location`, " +
+                                "`quantity`, `stock_status_id`, " +
+                                "`image`, `manufacturer_id`, `shipping`, `price`, `points`, `tax_class_id`, " +
+                                "`date_available`, `weight`, `weight_class_id`, `length`, `width`, `height`, `length_class_id`, " +
+                                "`subtract`, `minimum`, `sort_order`, `status`, `date_added`, `date_modified`, `viewed`)" +
+                string.Format("VALUES( '{0}', '{1}', " +
+                              "'{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}' , " +
+                              "{9}, {10}, " +
+                              "'{11}', {12}, {13}, {14}, '{15}', '{16}', " +
+                              "'{17}', '{18}', {19}, '{20}', '{21}', '{22}', {23}, " +
+                              "'{24}', '{25}', '{26}', {27}, '{28}', '{29}', '{30}');",
+                   pr.Id, kinderus[pr.Catalog][0].Replace("'", "`"), pr.Catalog.Replace("'", "`"), 
+                   "", "", "", "", "", "", "1", "7",
+                   pr.Pic, "@manufacturer_id", "1", pr.Price, "", "", 
+                   "2015-09-01", "", "1", "", "", "", "1",
+                   "", "", "", "1", "2015-09-01", "2015-09-01", "");
+
+                //Console.Write(product);
             }
+            #endregion
+           
         }
 
         private static KeyValuePair<string, string> GetDivValue(HtmlNode node, string mask)
